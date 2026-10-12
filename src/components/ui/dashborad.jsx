@@ -145,6 +145,7 @@ export default function StudentDashboard({ studentdata }) {
                 width={128}
                 height={40}
                 className="object-contain"
+                priority={true}
               />
             </div>
           </div>

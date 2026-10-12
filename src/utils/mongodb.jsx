@@ -1,3 +1,4 @@
+// lib/mongodb.js
 import { MongoClient } from 'mongodb';
 
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -6,33 +7,31 @@ if (!MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
 }
 
-let client;
-let clientPromise;
+const isDev = process.env.NODE_ENV === 'development';
 
 const options = {
-  tls: true,
-  tlsInsecure: true,
-  family: 4, // Forces IPv4 to bypass local network/DNS SSL routing conflicts
+  family: 4,
+  maxPoolSize: 10,                 // cap connections per instance
+  serverSelectionTimeoutMS: 5000,  // fail fast instead of hanging
+  // Local debugging only. Remove once the SSL issue is fixed:
+  ...(isDev ? { tlsInsecure: true } : {}),
 };
 
-if (process.env.NODE_ENV === 'development') {
-  if (!global._mongoClientPromise) {
-    client = new MongoClient(MONGODB_URI, options);
-    global._mongoClientPromise = client.connect();
-  }
-  clientPromise = global._mongoClientPromise;
-} else {
-  client = new MongoClient(MONGODB_URI, options);
-  clientPromise = client.connect();
+function createClientPromise() {
+  const client = new MongoClient(MONGODB_URI, options);
+  return client.connect().catch((err) => {
+    // allow a retry on the next call instead of caching the failure
+    global._mongoClientPromise = undefined;
+    throw err;
+  });
+}
+
+// Use the global in all environments so there is one client per process
+if (!global._mongoClientPromise) {
+  global._mongoClientPromise = createClientPromise();
 }
 
 export async function connectToMongoDB() {
-  try {
-    const connectedClient = await clientPromise;
-    const db = connectedClient.db();
-    return { client: connectedClient, db };
-  } catch (err) {
-    console.error("MongoDB Connection Error:", err);
-    throw err;
-  }
+  const client = await global._mongoClientPromise;
+  return { client, db: client.db() };
 }
