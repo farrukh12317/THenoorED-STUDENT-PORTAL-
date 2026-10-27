@@ -35,39 +35,51 @@ export default function StudentDashboard({ studentdata }) {
   const student = useMemo(() => {
     const data = studentdata ?? {};
 
-    const activeCourses = Array.isArray(data.activeCourses)
-      ? data.activeCourses
-      : Array.isArray(data["active course"])
-        ? data["active course"]
-        : Array.isArray(data.activeCourse)
-          ? data.activeCourse
+    // New format: courses = [{ name, progress, fee }]
+    // Falls back to the old activeCourses / courseProgress arrays
+    let courses = [];
+    if (Array.isArray(data.courses)) {
+      courses = data.courses.map((c) => ({
+        name: String(c.name ?? ""),
+        progressLabel: String(c.progress ?? "beginning").toLowerCase(),
+      }));
+    } else {
+      const names = Array.isArray(data.activeCourses)
+        ? data.activeCourses
+        : Array.isArray(data["active course"])
+          ? data["active course"]
+          : Array.isArray(data.activeCourse)
+            ? data.activeCourse
+            : [];
+
+      const progress = Array.isArray(data.courseProgress)
+        ? data.courseProgress
+        : Array.isArray(data["course progress"])
+          ? data["course progress"]
           : [];
 
-    const courseProgress = Array.isArray(data.courseProgress)
-      ? data.courseProgress
-      : Array.isArray(data["course progress"])
-        ? data["course progress"]
-        : [];
+      courses = names.map((n, i) => ({
+        name: String(n),
+        progressLabel: String(progress[i] ?? "beginning").toLowerCase(),
+      }));
+    }
+
+    const rawId = data._id?.$oid ?? data._id;
 
     return {
-      name: data.username ?? "Loading name...",
+      name: data.name || data.username || "Loading name...",
+      username: data.username ?? "",
       fatherName: data.fatherName ?? data["father name"] ?? "Not provided",
-      activeCourses,
-      courseProgress,
+      phone: data.phone ?? "",
+      status: data.status ?? "active",
+      courses,
       teacherRemarks:
         data.teacherRemarks ?? data["teacher remarks"] ?? "No remarks available.",
-      id: data._id ? `STU-${String(data._id).slice(-6).toUpperCase()}` : "STU-000000",
+      id: rawId ? `STU-${String(rawId).slice(-6).toUpperCase()}` : "STU-000000",
     };
   }, [studentdata]);
 
-  const courses = useMemo(
-    () =>
-      student.activeCourses.map((course, index) => ({
-        name: String(course),
-        progressLabel: String(student.courseProgress[index] ?? "beginning").toLowerCase(),
-      })),
-    [student]
-  );
+  const courses = student.courses;
 
   const handleLogout = () => {
     localStorage.removeItem("userId");
@@ -282,10 +294,21 @@ export default function StudentDashboard({ studentdata }) {
                   <Card className="border-green-100 dark:border-green-950 bg-green-50/40 dark:bg-green-950/10">
                     <CardContent className="p-5">
                       <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        Full Name
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-slate-900 dark:text-white truncate">
+                        {student.name}
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-green-100 dark:border-green-950 bg-green-50/40 dark:bg-green-950/10">
+                    <CardContent className="p-5">
+                      <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
                         Username
                       </p>
-                      <p className="mt-2 text-lg font-semibold text-slate-900 dark:text-white">
-                        {student.name}
+                      <p className="mt-2 text-lg font-semibold text-slate-900 dark:text-white truncate">
+                        {student.username}
                       </p>
                     </CardContent>
                   </Card>
@@ -297,6 +320,17 @@ export default function StudentDashboard({ studentdata }) {
                       </p>
                       <p className="mt-2 text-lg font-semibold text-slate-900 dark:text-white truncate">
                         {student.fatherName}
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-green-100 dark:border-green-950 bg-green-50/40 dark:bg-green-950/10">
+                    <CardContent className="p-5">
+                      <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        Phone
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-slate-900 dark:text-white truncate">
+                        {student.phone || "Not provided"}
                       </p>
                     </CardContent>
                   </Card>
@@ -329,13 +363,13 @@ export default function StudentDashboard({ studentdata }) {
 
                 {courses.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {courses.map((course) => {
+                    {courses.map((course, index) => {
                       const meta = getProgressMeta(course.progressLabel);
                       const ProgressIcon = meta.icon;
 
                       return (
                         <Card
-                          key={`${course.name}-${course.progressLabel}`}
+                          key={`${course.name}-${index}`}
                           className="border-green-100 dark:border-green-950 bg-white dark:bg-slate-900 shadow-none hover:shadow-sm transition-shadow"
                         >
                           <CardHeader className="p-5 pb-3">

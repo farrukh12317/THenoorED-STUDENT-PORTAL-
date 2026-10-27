@@ -9,6 +9,7 @@ const col = async () =>
 const ALLOWED = [
   "username",
   "name",
+  "password",
   "fatherName",
   "phone",
   "courses",

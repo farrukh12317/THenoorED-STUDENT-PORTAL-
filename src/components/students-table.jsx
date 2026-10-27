@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ const emptyCourse = () => ({ name: "", progress: "beginning", fee: "" });
 const emptyForm = () => ({
   username: "",
   name: "",
+  password: "",
   fatherName: "",
   phone: "",
   courses: [emptyCourse()],
@@ -47,14 +49,21 @@ const emptyForm = () => ({
 
 // Safe helpers so old/incomplete documents in the DB never crash the table
 const coursesOf = (s) => (Array.isArray(s.courses) ? s.courses : []);
-const totalFee = (s) => coursesOf(s).reduce((t, c) => t + (Number(c.fee) || 0), 0);
+const totalFee = (s) =>
+  coursesOf(s).reduce((t, c) => t + (Number(c.fee) || 0), 0);
 
-export default function StudentsTable({ students = [], onAdd, onUpdate, onDelete }) {
+export default function StudentsTable({
+  students = [],
+  onAdd,
+  onUpdate,
+  onDelete,
+}) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm());
+  const [showPassword, setShowPassword] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -65,7 +74,7 @@ export default function StudentsTable({ students = [], onAdd, onUpdate, onDelete
           (s.name || "").toLowerCase().includes(q) ||
           (s.username || "").toLowerCase().includes(q) ||
           (s.phone || "").includes(q) ||
-          coursesOf(s).some((c) => (c.name || "").toLowerCase().includes(q)))
+          coursesOf(s).some((c) => (c.name || "").toLowerCase().includes(q))),
     );
   }, [students, query, filter]);
 
@@ -74,7 +83,9 @@ export default function StudentsTable({ students = [], onAdd, onUpdate, onDelete
   const setCourse = (i, key) => (e) =>
     setForm((f) => ({
       ...f,
-      courses: f.courses.map((c, j) => (j === i ? { ...c, [key]: e.target.value } : c)),
+      courses: f.courses.map((c, j) =>
+        j === i ? { ...c, [key]: e.target.value } : c,
+      ),
     }));
 
   const addCourseRow = () =>
@@ -86,6 +97,7 @@ export default function StudentsTable({ students = [], onAdd, onUpdate, onDelete
   function openAdd() {
     setEditingId(null);
     setForm(emptyForm());
+    setShowPassword(false);
     setOpen(true);
   }
 
@@ -98,10 +110,12 @@ export default function StudentsTable({ students = [], onAdd, onUpdate, onDelete
         }))
       : [emptyCourse()];
     setEditingId(s.id);
+    setShowPassword(false);
     setForm({
       ...emptyForm(),
       username: s.username || "",
       name: s.name || "",
+      password : s.password || "",
       fatherName: s.fatherName || "",
       phone: s.phone || "",
       teacherRemarks: s.teacherRemarks || "",
@@ -111,7 +125,6 @@ export default function StudentsTable({ students = [], onAdd, onUpdate, onDelete
     });
     setOpen(true);
   }
-
   function handleSubmit(e) {
     e.preventDefault();
     const payload = {
@@ -124,13 +137,15 @@ export default function StudentsTable({ students = [], onAdd, onUpdate, onDelete
           fee: Number(c.fee) || 0,
         })),
     };
+    if (!payload.password) delete payload.password; // keep the existing password on edit
     if (editingId) onUpdate(editingId, payload);
     else onAdd(payload);
     setOpen(false);
   }
-
   function handleDelete(s) {
-    if (window.confirm(`Delete ${s.name || s.username}? This cannot be undone.`))
+    if (
+      window.confirm(`Delete ${s.name || s.username}? This cannot be undone.`)
+    )
       onDelete(s.id);
   }
 
@@ -184,7 +199,10 @@ export default function StudentsTable({ students = [], onAdd, onUpdate, onDelete
           <TableBody>
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                <TableCell
+                  colSpan={7}
+                  className="py-8 text-center text-muted-foreground"
+                >
                   No students found.
                 </TableCell>
               </TableRow>
@@ -194,7 +212,9 @@ export default function StudentsTable({ students = [], onAdd, onUpdate, onDelete
                 <TableCell>
                   <div className="font-medium">{s.name || s.username}</div>
                   {s.fatherName && (
-                    <div className="text-xs text-muted-foreground">S/O {s.fatherName}</div>
+                    <div className="text-xs text-muted-foreground">
+                      S/O {s.fatherName}
+                    </div>
                   )}
                 </TableCell>
                 <TableCell>{s.phone}</TableCell>
@@ -217,12 +237,19 @@ export default function StudentsTable({ students = [], onAdd, onUpdate, onDelete
                 <TableCell>Rs {totalFee(s).toLocaleString()}</TableCell>
                 <TableCell>{s.joinDate}</TableCell>
                 <TableCell>
-                  <Badge className={`capitalize ${statusStyle[s.status] || ""}`}>
+                  <Badge
+                    className={`capitalize ${statusStyle[s.status] || ""}`}
+                  >
                     {s.status}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right whitespace-nowrap">
-                  <Button variant="ghost" size="icon" onClick={() => openEdit(s)} aria-label="Edit">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => openEdit(s)}
+                    aria-label="Edit"
+                  >
                     <Pencil className="h-4 w-4 text-green-700" />
                   </Button>
                   <Button
@@ -259,9 +286,53 @@ export default function StudentsTable({ students = [], onAdd, onUpdate, onDelete
                   onChange={set("username")}
                 />
               </div>
+
+              {/* NEW: Student password */}
+              <div className="space-y-2">
+                <Label htmlFor="password">
+                  {editingId ? "Set new password" : "Set student password"}
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    required={!editingId}
+                    minLength={6}
+                    autoComplete="new-password"
+                    placeholder={
+                      editingId
+                        ? "Leave blank to keep current"
+                        : "Min 6 characters"
+                    }
+                    value={form.password}
+                    onChange={set("password")}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute top-1/2 right-3 -translate-y-1/2 text-green-700"
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="name">Full name</Label>
-                <Input id="name" required value={form.name} onChange={set("name")} />
+                <Input
+                  id="name"
+                  required
+                  value={form.name}
+                  onChange={set("name")}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fatherName">Father name</Label>
@@ -342,7 +413,12 @@ export default function StudentsTable({ students = [], onAdd, onUpdate, onDelete
                   </Button>
                 </div>
               ))}
-              <Button type="button" variant="outline" size="sm" onClick={addCourseRow}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addCourseRow}
+              >
                 <Plus className="mr-1 h-4 w-4" /> Add course
               </Button>
             </div>
@@ -357,10 +433,17 @@ export default function StudentsTable({ students = [], onAdd, onUpdate, onDelete
             </div>
 
             <DialogFooter className="gap-2 sm:gap-0">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+              >
                 Cancel
               </Button>
-              <Button type="submit" className="bg-green-600 text-white hover:bg-green-700">
+              <Button
+                type="submit"
+                className="bg-green-600 text-white hover:bg-green-700"
+              >
                 {editingId ? "Save changes" : "Add student"}
               </Button>
             </DialogFooter>
