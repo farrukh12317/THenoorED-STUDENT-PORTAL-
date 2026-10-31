@@ -13,6 +13,10 @@ export async function POST(request) {
     const db = client.db("centerdb");
 
     const user = await db.collection("user").findOne({ username });
+
+//     console.log("DB:", JSON.stringify(user.password), typeof user.password);
+// console.log("Sent:", JSON.stringify(password), typeof password);
+// console.log("User doc:", user);
     if (!user) {
       console.log("No user found for:", JSON.stringify(username));
       return NextResponse.json({ error: "User not found" }, { status: 404 });
