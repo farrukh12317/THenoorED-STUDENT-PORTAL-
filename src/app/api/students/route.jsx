@@ -41,6 +41,7 @@ export async function POST(req) {
     const doc = {
       username: String(body.username || "").trim().toLowerCase(),
       name: String(body.name || "").trim(),
+      password: String(body.password || ""),
       fatherName: body.fatherName || "",
       phone: body.phone || "",
       courses: Array.isArray(body.courses) ? body.courses : [],

@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAcademyStore } from "@/hooks/use-academy-store";
-
+import NoorEdLoader from "@/components/NoorEdLoader";
 const AUTH_KEY = "adminAuth";
 const LOGIN_PATH = "/Admin/Login";
 
@@ -33,6 +33,7 @@ function StatCard({ title, value, icon: Icon, tone = "green" }) {
     amber: "bg-amber-100 text-amber-700",
     red: "bg-red-100 text-red-700",
   };
+
   return (
     <Card className="border-green-100">
       <CardContent className="flex items-center justify-between gap-2 p-3 sm:p-5">
@@ -55,7 +56,7 @@ function StatCard({ title, value, icon: Icon, tone = "green" }) {
 export default function DashboardPage() {
   const router = useRouter();
   const [authed, setAuthed] = useState(false);
-
+  const [minTimePassed, setMinTimePassed] = useState(false);
   // Hooks must be called inside the component, never at module level.
   const store = useAcademyStore();
   const students = store.students ?? [];
@@ -101,15 +102,15 @@ export default function DashboardPage() {
     };
   }, [students, transactions]);
 
+  useEffect(() => {
+  const t = setTimeout(() => setMinTimePassed(true), 5000); // 5 seconds
+  return () => clearTimeout(t);
+}, []);
   // Early return comes after all hooks. This also prevents a flash of the
   // dashboard before an unauthenticated visitor is redirected.
-  if (!authed || store.loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-green-700">
-        Loading dashboard...
-      </div>
-    );
-  }
+ if (!authed || store.loading  || !minTimePassed) {
+  return <NoorEdLoader />;
+}
 
   const tab =
     "data-[state=active]:bg-green-600 data-[state=active]:text-white";

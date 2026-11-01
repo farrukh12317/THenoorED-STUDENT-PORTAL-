@@ -1,70 +1,76 @@
 import { NextResponse } from "next/server";
+import { ObjectId } from "mongodb";
 import { connectToMongoDB } from "@/utils/mongodb";
 import { isAdmin, unauthorized } from "@/utils/adminAuth";
 
 const col = async () =>
   (await connectToMongoDB()).client.db("centerdb").collection("user");
 
-// Only these fields are ever sent to the browser (password never leaves the server)
-const PUBLIC_FIELDS = {
-  username: 1,
-  name: 1,
-  fatherName: 1,
-  phone: 1,
-  courses: 1,
-  teacherRemarks: 1,
-  joinDate: 1,
-  status: 1,
-};
+const validId = (id) => ObjectId.isValid(id);
 
-const clean = ({ _id, ...rest }) => ({ id: _id.toString(), ...rest });
-
-export async function GET(req) {
+// UPDATE a student
+export async function PUT(req, { params }) {
   if (!isAdmin(req)) return unauthorized();
   try {
-    const rows = await (await col())
-      .find({}, { projection: PUBLIC_FIELDS })
-      .sort({ joinDate: -1 })
-      .toArray();
-    return NextResponse.json(rows.map(clean));
-  } catch (e) {
-    console.error("GET /api/students", e);
-    return NextResponse.json({ error: "Failed to load students" }, { status: 500 });
-  }
-}
+    const { id } = await params; // Next 15+: params is a promise
+    if (!validId(id)) {
+      return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+    }
 
-export async function POST(req) {
-  if (!isAdmin(req)) return unauthorized();
-  try {
     const body = await req.json().catch(() => ({}));
 
-    const doc = {
-      username: String(body.username || "").trim().toLowerCase(),
-      password: String(body.password || ""),   // added
+    const update = {
       name: String(body.name || "").trim(),
       fatherName: body.fatherName || "",
       phone: body.phone || "",
       courses: Array.isArray(body.courses) ? body.courses : [],
       teacherRemarks: body.teacherRemarks || "",
-      joinDate: body.joinDate || new Date().toISOString().slice(0, 10),
+      joinDate: body.joinDate,
       status: body.status || "active",
     };
 
-    if (!doc.username || !doc.name || !doc.password) {
-      return NextResponse.json(
-        { error: "Username, name and password are required" },
-        { status: 400 }
-      );
+    if (body.username) {
+      update.username = String(body.username).trim().toLowerCase();
+    }
+    // Only change the password when a new one was typed (plain text for testing)
+    if (body.password) {
+      update.password = String(body.password);
     }
 
-    const { insertedId } = await (await col()).insertOne(doc);
-    const { password: _pw, ...safeDoc } = doc;   // don't send password back
-    return NextResponse.json({ id: insertedId.toString(), ...safeDoc }, { status: 201 });
+    const result = await (await col()).updateOne(
+      { _id: new ObjectId(id) },
+      { $set: update }
+    );
+
+    if (!result.matchedCount) {
+      return NextResponse.json({ error: "Student not found" }, { status: 404 });
+    }
+    return NextResponse.json({ ok: true });
   } catch (e) {
     if (e.code === 11000) {
       return NextResponse.json({ error: "Username already exists" }, { status: 409 });
     }
-    console.error("POST /api/students", e);
+    console.error("PUT /api/students/[id]", e);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
+}
+
+// DELETE a student
+export async function DELETE(req, { params }) {
+  if (!isAdmin(req)) return unauthorized();
+  try {
+    const { id } = await params;
+    if (!validId(id)) {
+      return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+    }
+
+    const result = await (await col()).deleteOne({ _id: new ObjectId(id) });
+    if (!result.deletedCount) {
+      return NextResponse.json({ error: "Student not found" }, { status: 404 });
+    }
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error("DELETE /api/students/[id]", e);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

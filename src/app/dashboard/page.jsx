@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import Dashborad from '@/components/ui/dashborad';
+import NoorEdLoader from "@/components/NoorEdLoader";
 
 const fetcher = async (url) => {
   const res = await fetch(url);
@@ -18,6 +19,7 @@ const fetcher = async (url) => {
 export default function DashboardPage() {
   const router = useRouter();
   const [userId, setUserId] = useState(null);
+  
 
   // Read localStorage after mount (avoids server/client hydration mismatch)
   useEffect(() => {
@@ -28,6 +30,13 @@ export default function DashboardPage() {
     }
     setUserId(id);
   }, [router]);
+//loadind logo
+  const [minTimePassed, setMinTimePassed] = useState(false);
+
+useEffect(() => {
+  const t = setTimeout(() => setMinTimePassed(true), 5000); // 5 seconds
+  return () => clearTimeout(t);
+}, []);
 
   const { data } = useSWR(
     userId ? `/api/user-data?userId=${userId}` : null,
@@ -40,6 +49,6 @@ export default function DashboardPage() {
     }
   );
 
-  if (!data) return <p className="p-6">Loading...</p>;
+  if (!data || !minTimePassed) return <NoorEdLoader />;
   return <Dashborad studentdata={data} />;
 }

@@ -1,0 +1,86 @@
+.ne-loader {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: #fff;
+}
+
+.ne-loader svg {
+  width: min(380px, 80vw);
+  height: auto;
+  overflow: visible;
+  animation: ne-in 0.6s ease-out both, ne-breathe 3s ease-in-out 0.6s infinite;
+}
+
+/* shine sweeps across, then pauses */
+.ne-shine {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ne-shine 2.6s ease-in-out infinite;
+}
+
+@keyframes ne-shine {
+  0%   { transform: translateX(-120px) skewX(-20deg); }
+  65%  { transform: translateX(500px)  skewX(-20deg); }
+  100% { transform: translateX(500px)  skewX(-20deg); }
+}
+
+/* graduation cap floats gently */
+.ne-cap {
+  animation: ne-bob 2.6s ease-in-out infinite;
+}
+@keyframes ne-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+
+/* bulb glow pulses */
+.ne-glow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ne-glow 2.6s ease-in-out infinite;
+}
+@keyframes ne-glow {
+  0%, 100% { opacity: 0.25; transform: scale(0.85); }
+  50%      { opacity: 1;    transform: scale(1.1); }
+}
+
+/* sparkle on the cap */
+.ne-spark {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ne-spark 2.6s ease-in-out infinite;
+}
+@keyframes ne-spark {
+  0%, 100% { opacity: 0; transform: scale(0.2) rotate(0deg); }
+  50%      { opacity: 1; transform: scale(1)   rotate(45deg); }
+}
+
+/* loading dots */
+.ne-dot {
+  animation: ne-dot 1.2s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.ne-d2 { animation-delay: 0.15s; }
+.ne-d3 { animation-delay: 0.3s; }
+@keyframes ne-dot {
+  0%, 80%, 100% { opacity: 0.25; transform: scale(0.7); }
+  40%           { opacity: 1;    transform: scale(1.2); }
+}
+
+@keyframes ne-in {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes ne-breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.02); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ne-loader svg, .ne-shine, .ne-cap, .ne-glow, .ne-spark, .ne-dot {
+    animation: none;
+  }
+  .ne-spark { opacity: 0; }
+}
